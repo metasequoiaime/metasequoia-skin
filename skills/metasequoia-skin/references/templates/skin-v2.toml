@@ -28,7 +28,8 @@ page_arrow_style = "chevron"
 fit_content = false
 expand_panel = false
 # expand_rows = 4                  # 仅 expand_panel = true 时生效；2~8 的整数
-line_gap_dip = 6                   # 预编辑行与候选行之间的距离，0~100
+line_gap_dip = 6                   # 预编辑行与候选行之间的距离，0~100；写了 preedit_margin_dip 后不再覆盖它
+# preedit_margin_dip = [-2, 0, 0, 0] # 预编辑行外边距（上右下左），1/2/4 个 -500~500；可写负值，写了以它为准
 
 [candidate_window.border_image]    # 九宫格面板图：整块卡片背景换成这张图
 source = "assets/panel.png"        # 必填；换成真实文件，只能是 .png/.apng/.gif/.webp
@@ -37,29 +38,38 @@ slice_dip = [16, 44, 16, 44]       # 必填，「上 右 下 左」，1/2/4 个 
 # stretch_dip = [16, 90, 16, 90]   # 可拉伸区（源图像素）；给出时它才是可拉伸区
 # width_dip = [16, 44, 16, 44]     # 边框绘制宽度（屏幕 DIP），缺省用 slice/stretch 的值
 # fill = true                      # false = 中心区也不画，露出 surface 底色
-# repeat = "stretch"               # stretch(默认) / repeat；1 个值两轴相同，2 个值「横向 纵向」
+# repeat = "stretch"               # stretch(默认) / repeat / round / space；1 个值两轴相同，2 个值「横向 纵向」
+                                    # round = 缩放到整数块，space = 原尺寸铺、空隙均分，两者边缘都收口
 
-[candidate_window.border_image.vertical]  # 竖排换用的面板图；只写与横排不同的键
-source = "assets/panel-vertical.png"      # 不写继承横排 source；写了文件必须存在
+[candidate_window.border_image.vertical]  # 竖排换用的面板图；只写与共用那份不同的键
+source = "assets/panel-vertical.png"      # 不写继承共用的 source；写了文件必须存在
 slice_dip = [26, 10, 26, 10]              # 竖排几何通常要单独写一份
-# repeat = ["stretch", "repeat"]          # 横向拉伸、纵向平铺
-# light_source 不继承：竖排要浅色变体就自己写一张
+# repeat = ["stretch", "round"]           # 横向拉伸、纵向按整数块平铺
+# light_source 跟着 source 走：换了图又要浅色变体就自己写一张
+
+# [candidate_window.border_image.horizontal]  # 也能只改横排，两张子表互不继承
+# repeat = ["space", "stretch"]               # 左右边按原尺寸平铺、空隙均分
 
 [candidate_window.content_insets_dip]  # 文字与内容的安全内边距，从面板外缘量起
 top = 4                            # 缺省 0；top / bottom ≤200，left / right ≤500
 right = 130
 bottom = 14
 left = 55
+# clamp_to_border = true           # false = 不按九宫格边宽兜底，完全按上面给的数值排
 
 [candidate_window.content_insets_dip.vertical]  # 竖排只覆盖写了的边
 left = 10
 right = 12
+# clamp_to_border = false         # 只对竖排生效
 
 [candidate_window.outer_insets_dip]  # 卡片四边之外预留的透明空白（给卡外挂件用）
 top = 87                           # 缺省 0；四边都 ≤500
 right = 16
 bottom = 4
 left = 0
+
+# [candidate_window.outer_insets_dip.vertical]  # 竖排的挂件不同就单独预留，两表互不继承
+# top = 0                         # 写 0 取消共用那侧的预留
 
 [[candidate_window.decorations]]   # 卡片外的自由挂件，数组表；最多 32 层
 image = "assets/char.png"          # 必填；换成真实文件
@@ -69,13 +79,15 @@ height_dip = 161                   # 必填，>0 且 ≤2000
 offset_x_dip = 10                  # -2000~2000，正数向右
 offset_y_dip = -15                 # -2000~2000，正数向下
 z_index = 3                        # -1000~1000，默认 2；面板自身相当于 1，小于 1 画在面板下
+# layouts = ["horizontal"]         # 只在横排显示；不写横竖都画
 
-# [[candidate_window.decorations]] # 想要第二层就再写一段
+# [[candidate_window.decorations]] # 想要第二层就再写一段（可以给另一种排布）
 # image = "assets/star.png"
 # anchor = "top-right"
 # width_dip = 48
 # height_dip = 48
 # z_index = 4
+# layouts = ["vertical"]
 
 # v1 的顶部装饰图与 v2 的卡外挂件是两套东西，可以同时用。
 # [candidate_window.decoration]

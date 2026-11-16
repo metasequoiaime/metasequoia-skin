@@ -1,6 +1,6 @@
 ---
 name: metasequoia-skin
-description: 生成、校验、安装水杉输入法（metasequoia ime）的候选窗皮肤包。用户描述想要的观感（配色、圆角、阴影、背景图、装饰图、版式微调、卷轴展开、九宫格贴图面板、卡片外立绘挂件、翻页箭头、工具栏配色或工具栏图片模式），或需要手写/排查 skin.toml，或皮肤装上没反应、设置页报「缺少 candidate_window」「candidate 配色无效」「找不到 image 文件」时使用。产出 skin.toml + assets，并用 check_skin.py 离线校验（支持 schema_version 1 与 2）。
+description: 生成、校验、安装水杉输入法（metasequoia ime）的候选窗皮肤包。用户描述想要的观感（配色、圆角、阴影、背景图、装饰图、版式微调、横竖排各一套、卷轴展开、九宫格贴图面板与平铺方式、卡片外立绘挂件、翻页箭头、工具栏配色 / 图片模式 / 毛玻璃），或需要手写/排查 skin.toml，或皮肤装上没反应、设置页报「缺少 candidate_window」「candidate 配色无效」「找不到 image 文件」时使用。产出 skin.toml + assets，并用 check_skin.py 离线校验（支持 schema_version 1 与 2）。
 license: MIT
 compatibility: opencode
 metadata:
@@ -51,12 +51,12 @@ metadata:
 | 候选窗配色：22 个颜色键 + 选中竖条开关 | `[candidate.dark]` / `[candidate.light]` |
 | 候选窗右键菜单 4 色 | `[candidate.*.menu]` |
 | 卡片圆角、线宽、高亮圆角、阴影、系统材质、字体族、最小宽度、贴文字收紧 | `[candidate_window]` 的直接键 |
-| 版式：内边距、间距、序号大小与间距、选中竖条、高亮贴角 / 整行铺满、预编辑行边距；横竖排可各一套 | `[candidate_window]` 版式键 + `.horizontal` / `.vertical` |
+| 版式：内边距、间距、序号大小与间距、选中竖条、高亮贴角 / 整行铺满、预编辑行边距、最小宽度、贴文字收紧、翻页箭头；横竖排可各一套 | `[candidate_window]` 版式键 + `.horizontal` / `.vertical` |
 | 翻页箭头、箭头样式与分隔线；横排卷轴展开 | `page_arrows` / `page_arrow_style` / `page_arrow_divider`；`expand_panel` / `expand_rows` |
-| 卡内背景图、卡上装饰图、装饰图上叠一个候选词 | `[candidate_window.background]`、`[candidate_window.decoration]` |
-| 工具栏配色、圆角、图标悬停圆角（bar 模式） | `[toolbar]` / `[toolbar.dark]` / `[toolbar.light]` |
+| 卡内背景图、卡上装饰图、装饰图上叠一个候选词、装饰图只在横排或竖排显示 | `[candidate_window.background]`、`[candidate_window.decoration]`（含 `layouts`） |
+| 工具栏配色、圆角、图标悬停圆角（bar 模式）；候选框垫毛玻璃时工具栏跟着垫 | `[toolbar]` / `[toolbar.dark]` / `[toolbar.light]` |
 | 工具栏整块图片模式：背景图、按钮位置 / 尺寸 / 状态图 / 自动排列 | `mode = "image"`、`image*`、`[toolbar.buttons.*]`、`button_defaults`、`button_flow` |
-| v2：九宫格面板、面板内安全边距、行距、卡外挂件、卡外留白、动图 | `schema_version = 2` + `base = "canvas"`，见 §4 |
+| v2：九宫格面板（含按排布换图、`round` / `space` 平铺）、面板内安全边距、行距、卡外挂件（可按排布显示）、卡外留白（可按排布预留）、动图 | `schema_version = 2` + `base = "canvas"`，见 §4 |
 | 底子用哪套基底 | `base` |
 
 | 做不到 | 说明 |
@@ -68,11 +68,11 @@ metadata:
 | 全屏背景、窗口本身的其它透明特效 | 不在参数里。卡片背后的材质只有 `backdrop` 这一种 |
 | 改内置皮肤（fluent / wechat / …）本身的外观 | 那是水杉仓库的源码，不是皮肤包。内置皮肤只有 `page_arrows`、`fit_content`、`expand_panel` 三个开关可改，改法见 §5 |
 
-**毛玻璃是可以做的**，走 `candidate_window.backdrop`：`acrylic`（亚克力）/ `mica`（云母）。限制要说清：需要系统开着「透明效果」，关掉或系统太老时退回不透明底色；同一张皮肤写了 `border_image` 时不生效。细节见 [schema-v1.md 的卡片与开关](references/schema-v1.md#卡片与开关)。
+**毛玻璃是可以做的**，走 `candidate_window.backdrop`：`acrylic`（亚克力）/ `mica`（云母）。限制要说清：需要系统开着「透明效果」，关掉或系统太老时退回不透明底色；同一张皮肤写了 `border_image` 时不生效。**条形悬浮工具栏会跟着垫同一种材质**（色调取 `[toolbar.*].background`，图片模式不垫），所以做毛玻璃皮肤时工具栏配色也要一并给。细节见 [schema-v1.md 的卡片与开关](references/schema-v1.md#卡片与开关)。
 
 **实现只有 Direct2D 一套**：候选窗、悬浮工具栏都由 `msimeui` 用 Direct2D 绘制。皮肤只能声明颜色与图片，没有第二个后端可选；没写的键由 `base` 补齐。
 
-### 六条容易踩的一致性规则
+### 七条容易踩的一致性规则
 
 1. **没写的键会走 `base` 的 D2D 令牌**：`base` 的配色与几何先铺底，你的键再逐项覆盖。**所以 `[candidate.dark]` 和 `[candidate.light]` 都要把配色键写全**，这样任何 `base` 下都只听你的。共享基底没写的键走的也是 fluent 的令牌。
 
@@ -84,7 +84,9 @@ metadata:
 
 5. **写 `translation` 会连带重置词性与分隔符**：解析器给 `translation` 上色的同时，会把 `translation_pos` / `translation_separator` 一起拉成同色；写了 `selected_translation` 则把选中行的词性 / 分隔符也拉成它。要保留那几处独立颜色，得显式写 `translation_pos` / `translation_separator`（选中行另有 `selected_translation_pos` / `selected_translation_separator`）。
 
-6. **v2 必须 `base = "canvas"`**。`schema_version = 2` 只是声明，真正的地基是 `canvas`——透明面板、无描边、直角、默认没有阴影，外观全部来自九宫格面板图与挂件。写了 `2` 但 `base` 是别的基底时，这个包仍能装也能用，但**按 v1 加载**：`border_image`（含 `.vertical`）、`content_insets_dip`（含 `.vertical`）、`line_gap_dip`、`outer_insets_dip`、`decorations` 全部被忽略（连同其中的错误），设置页诊断里会多一条说明。反过来，`schema_version = 1` 配 `canvas` 会被直接拒——没有面板贴图它只是一张透明卡片。`[animation]` 与装饰图的 `motion` / `motion_period_ms` 不在此列：它们是 msime 共用 v2 键，对任何基底都合法，Windows 只按静态显示。
+6. **v2 必须 `base = "canvas"`**。`schema_version = 2` 只是声明，真正的地基是 `canvas`——透明面板、无描边、直角、默认没有阴影，外观全部来自九宫格面板图与挂件。写了 `2` 但 `base` 是别的基底时，这个包仍能装也能用，但**按 v1 加载**：`border_image`（含 `.horizontal` / `.vertical`）、`content_insets_dip`（含 `.horizontal` / `.vertical`）、`line_gap_dip`、`outer_insets_dip`（含 `.horizontal` / `.vertical`）、`decorations` 全部被忽略（连同其中的错误），设置页诊断里会多一条说明。反过来，`schema_version = 1` 配 `canvas` 会被直接拒——没有面板贴图它只是一张透明卡片。`[animation]` 与装饰图的 `motion` / `motion_period_ms` 不在此列：它们是 msime 共用 v2 键，对任何基底都合法，Windows 只按静态显示。
+
+7. **`horizontal` / `vertical` 子表只覆盖、不继承**。`[candidate_window.horizontal]` / `.vertical` 与 `border_image`、`content_insets_dip`、`outer_insets_dip` 的 `.horizontal` / `.vertical` 都只改写了的键，没写的沿用共用那份；**两张子表地位相同、互不继承**，只想改竖排就只写竖排。唯一跟着走的例外是 `border_image` 的 `light_source`：子表换了 `source` 又没写 `light_source` 时不会沿用共用那张浅色图（它是按另一张图的几何画的）。
 
 **已移除的老字段**：根级 `preview`、根级 `toolbar_stylesheet` 写了不报错但完全无效；完整清单见 [已移除的字段](references/validation.md#已移除的字段)。
 
@@ -95,13 +97,13 @@ metadata:
 1. **想要什么观感**——参考色、参考图、"像微信"、"性冷淡灰"、"赛博霓虹"、"像微软拼音"。说不出就给选项让他挑。
 2. **明暗**：默认两套都做（推荐），除非用户明确只要一套。
 3. **要不要图片**：候选框**里面**铺底图（`background`）、卡片**上方**放装饰图（`decoration`），还是都要。要就让他给图。
-4. **要不要改悬浮工具栏**：默认只改配色和圆角；想要"搜狗状态栏那种整块图"再问图片模式（背景图、按钮贴图、自动排列）。不加按钮种类。
+4. **要不要改悬浮工具栏**：默认只改配色和圆角；想要"搜狗状态栏那种整块图"再问图片模式（背景图、按钮贴图、自动排列）。不加按钮种类。选了 `acrylic` / `mica` 时顺带说明工具栏会跟着垫同一种材质，需要一起给工具栏配色。
 5. **要不要翻页箭头**：要的话再问折线还是实心三角（`page_arrow_style`）。不说就跟着 `base` 走。
-6. **横排还是竖排**：默认 `supports` 全选。竖排要单独换面板图或安全内边距时再展开问。
-7. **版式要不要微调**：只在用户说"太挤 / 太松 / 序号太大 / 高亮没铺满 / 想要微信那种整行"时问，不要把所有版式键变成必问项。
+6. **横排还是竖排**：默认 `supports` 全选。竖排要单独换面板图 / 安全内边距 / 卡外留白，或只想让某一种排布显示挂件、开翻页箭头时，再展开问——这些都能按排布各写一套。
+7. **版式要不要微调**：只在用户说"太挤 / 太松 / 序号太大 / 高亮没铺满 / 翻译总把卡片撑宽 / 想要微信那种整行"时问，不要把所有版式键变成必问项。只想治竖排的宽度问题时，答案多半是竖排子表里的 `min_width_dip`。
 8. **要不要卷轴展开**：微信输入法式的横排展开（`expand_panel = true`），展开后一屏几行（`expand_rows`，2~8，默认 4）。只在横排生效，开了以后横排不再显示翻页箭头。
 9. **装饰图上要不要叠候选词**：装饰图里画了对话框 / 气泡时，可以 `candidate_overlay = true` 叠一个候选词。没有这种图就别开。
-10. **要不要 v2 能力**（整块贴图面板 / 面板内安全内边距 / 行距 / 卡外立绘与留白）：只有这些需求才需要 v2。要卡外立绘就必须 v2 且写 `outer_insets_dip`，否则立绘会被窗口边界裁掉。同时提醒用户：v2 的地基是透明的 `canvas`，只声明 v2 不给面板图，候选框里就只剩悬空的文字。
+10. **要不要 v2 能力**（整块贴图面板 / 按排布换面板图与平铺方式 / 面板内安全内边距 / 行距 / 卡外立绘与留白）：只有这些需求才需要 v2。要卡外立绘就必须 v2 且写 `outer_insets_dip`，否则立绘会被窗口边界裁掉。同时提醒用户：v2 的地基是透明的 `canvas`，只声明 v2 不给面板图，候选框里就只剩悬空的文字。
 
 `base` 不用问用户，按观感你来定：
 

@@ -51,10 +51,13 @@
 | 设置页诊断里出现「candidate_window.border_image 只在 base = "canvas" 时生效，已忽略」之类的提示 | v2 字段被整段忽略，皮肤是按 v1 加载的 | 把 `base` 改成 `canvas`（`check_skin.py` 对应的提示是「schema_version = 2 需要 base = "canvas"」） |
 | v2 候选框里只有悬空文字、没有面板 | `canvas` 只是透明地基，没写 `[candidate_window.border_image]` | 补一张九宫格面板图 |
 | 亚克力 / 云母没生效，卡片仍是不透明 | 系统关了「透明效果」（设置 → 个性化 → 颜色）；系统太老（低于 Windows 10 1903，云母还要 Windows 11）；或同时写了 `border_image`（有面板图就不垫材质） | 让用户打开透明效果 / 升级系统；只能留一种时只留一个 |
+| 工具栏没跟上候选框的毛玻璃 | 工具栏走的是条形 `bar` 模式（图片模式不垫材质）；或 `[toolbar.dark]` / `[toolbar.light].background` 是全不透明的深色，材质被色调层盖住了 | 保持 `mode = "bar"`；把 `background` 调成半透明或写 `backdrop_opacity`，让材质透出来 |
 | 面板贴图被横着拉长 | 图里画死的装饰落进了可拉伸区 | 用 `stretch_dip` 把可拉伸区收窄到纯纹理处 |
-| 九宫格写了 `repeat` 还是被拉长 / 花纹重复得不对 | `repeat` 写错了位置（应在 `[candidate_window.border_image]` 或 `.vertical` 里）；值不是 `stretch` / `repeat`；或装饰画在了边块里，平铺时被一块块重复 | 确认 `repeat = "repeat"` 或 `repeat = ["stretch", "repeat"]`；一次性装饰放回四角或改用 `stretch_dip` 排除边块 |
-| 竖排面板图错位 / 横排的图套到竖排上 | 没写 `[candidate_window.border_image.vertical]` 的 `source` / `slice_dip`（`source` 会继承横排）；或竖排用了横排的切片；或以为 `light_source` 会继承 | 竖排单独给一张图并写自己的 `slice_dip`；要浅色变体就单独写 `.vertical.light_source` |
-| 竖排文字离边框太近 / 横排的留白套到了竖排 | 只写了横排 `content_insets_dip`，竖排面板更窄时左右边距不够 | 补 `[candidate_window.content_insets_dip.vertical]`，只写要覆盖的边 |
+| 九宫格写了 `repeat` 还是被拉长 / 花纹重复得不对 | `repeat` 写错了位置（应在 `[candidate_window.border_image]` 或它的 `.horizontal` / `.vertical` 子表里）；值不是 `stretch` / `repeat` / `round` / `space`；或装饰画在了边块里，平铺时被一块块重复 | 确认 `repeat = "repeat"` 或 `repeat = ["stretch", "round"]`；一次性装饰放回四角或改用 `stretch_dip` 排除边块 |
+| 平铺的花纹在边缘被切掉一半 | 用了 `repeat`：它按源图原尺寸铺，末尾放不下的部分直接裁掉 | 换成 `round`（缩放到整数块）或 `space`（原尺寸铺、空隙均分），两者都能收口 |
+| 竖排面板图错位 / 横排的图套到竖排上 | 没写 `[candidate_window.border_image.vertical]` 的 `source` / `slice_dip`（`source` 会继承共用那份）；或竖排用了横排的切片；或以为 `light_source` 会继承 | 竖排单独给一张图并写自己的 `slice_dip`；换了 `source` 又要浅色变体，就单独写 `.vertical.light_source` |
+| 竖排文字离边框太近 / 横排的留白套到了竖排 | 只写了共用的 `content_insets_dip`，竖排面板更窄时左右边距不够 | 补 `[candidate_window.content_insets_dip.vertical]`，只写要覆盖的边 |
+| 文字离贴图花纹太远、怎么调都压不下去 | `content_insets_dip` 某边小于九宫格该边的边宽时，默认按边宽兜底（`clamp_to_border = true`） | 确认边宽里那一段其实是黑底后，写 `clamp_to_border = false`，完全按你给的数值排 |
 | 候选文字压在贴图花纹上 / 离边框太近 | 没写 `content_insets_dip`，内容按「边宽 + 5 DIP」排 | 按面板外缘给四边 `content_insets_dip` |
 | 浅色主题面板还是深色的 | 只写了 `source`，没写 `light_source`；或两张图的切片 / 边宽不一致 | 补 `light_source`，并让它和 `source` 用同一套几何 |
 | 挂件被窗口边界切掉 | 没写 `outer_insets_dip`，或数值小于挂件超出卡片的距离 | 给超出那几边补 `outer_insets_dip` |
@@ -62,3 +65,6 @@
 | 挂件图和框对不上、四周留白 | 图片在框内 `contain` 等比缩放、居中，`width_dip` / `height_dip` 与图片比例不一致就会留白 | 按图片宽高比给两个尺寸 |
 | 挂件动图不动 | v1 皮肤里的图片从不播动画；系统关了「动画效果」（设置 → 辅助功能 → 视觉效果）；或这张图超过 1024 帧 / 解码后超过 64 MB / 文件损坏 | 确认是 `schema_version = 2` + `base = "canvas"` 的皮肤；其余属于系统设置或文件本身的问题 |
 | 写了 `[[decorations]]` 却没有挂件效果 | 挂件不参与布局：伸到卡片外的部分没留白就被裁掉，`z_index < 1` 的只在面板外露出来；图片路径也可能写错 | 补 `outer_insets_dip`；用 `check_skin.py` 确认图片存在 |
+| 某一种排布下挂件不见了 | 这张挂件表写了 `layouts`，里面没有当前排布 | 补上另一种排布名，或整段删掉 `layouts` 让横竖都画 |
+| 版式 / 面板图按排布覆盖没生效 | 子表名写错（应为 `[candidate_window.horizontal]` / `.vertical`、`[candidate_window.border_image.horizontal]` 等）；或以为两张子表会互相继承 | 只覆盖真正不同的键；两张子表互不继承，没写子表的排布直接用共用那份 |
+| 预编辑行位置被设置页的「行距」顶回去 | 只写了 `line_gap_dip`，没写 `preedit_margin_dip`：行距本来就是设置页那一档在管 | 在 `[candidate_window]` 或它的 `.horizontal` / `.vertical` 里写 `preedit_margin_dip`（可写负值），写了就以它为准 |

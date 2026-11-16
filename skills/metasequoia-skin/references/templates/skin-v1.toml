@@ -15,7 +15,7 @@ layouts = ["horizontal", "vertical"]
 themes = ["dark", "light"]
 
 [candidate_window]                 # 表必须存在（哪怕只写 min_width_dip = 0）
-min_width_dip = 320                # 0~1000，0 = 不设
+min_width_dip = 320                # 0~1000 / ≤10em，0 = 不设；可写进横排 / 竖排子表
 corner_radius_dip = 8              # 0~32；0 = 直角
 border_width_dip = 1.5             # 0~4，可小数；颜色取 [candidate.*].border
 item_corner_radius_dip = 6         # 0~16；高亮块圆角
@@ -43,15 +43,20 @@ expand_panel = false               # true = 横排用卷轴展开代替翻页（
 # item_corners_follow_card = true  # 落在卡片四角上的高亮角跟卡片同一圆角
 # justify_rows = false             # 横排时把多出的宽度均分给同一行，高亮铺满到卡片右边
 # trim_hidden_preedit_gap = false  # 隐藏预编辑行时抵掉它与候选之间的 2 DIP 行距
-# preedit_margin_dip = [0, 0, 0, 0] # 预编辑行外边距（上右下左），1 / 2 / 4 个 0~500 的值
+# preedit_margin_dip = [0, 0, 0, 0] # 预编辑行外边距（上右下左），1 / 2 / 4 个 -500~500 的值；可写负值
+                                   # 写了它就以它为准，设置页的「行距」不会再覆盖下边距
 
 # 横排 / 竖排各写一套覆盖；必须排在 [candidate_window] 直接键之后。
+# 两张子表只覆盖写了的键、互不继承 —— 只想改竖排就只写竖排。
 # [candidate_window.horizontal]
 # item_min_width = "3.5em"
 # item_gap = "0.15em"
+# page_arrows = true               # 按排布单独开关翻页箭头
 #
 # [candidate_window.vertical]
 # selected_bar_height_em = 0.8
+# min_width_dip = 420              # 只抬高竖排的最小宽度（也给翻译留并排空间）
+# fit_content = true               # 只让竖排严格按文字收紧
 
 # 卡片内的背景图。整段注释掉就没有背景图；表一旦出现，image 和文件必须存在。
 # [candidate_window.background]
@@ -65,6 +70,7 @@ expand_panel = false               # true = 横排用卷轴展开代替翻页（
 # top_inset_dip = 88               # 必填，0~500 且 > 0
 # width_dip = 136                  # 必填，0~1000 且 > 0
 # align = "right"                  # left / center / right，默认 right
+# layouts = ["horizontal"]         # 只在横排显示；不写横竖都画，不显示时也不占最小宽度
 # candidate_overlay = false        # true 时把一个候选词叠在装饰图上
 # candidate_overlay_index = 1      # 0 = 跟随高亮；1 起 = 当前页第几个，0~100
 # candidate_overlay_font_size_dip = 16       # >0 且 ≤200
@@ -154,17 +160,20 @@ selected_translation_separator = "#B8860B"
 # hover = "rgba(0,0,0,.06)"
 
 # 悬浮工具栏（bar 模式）。整段注释掉就完全跟 base 走。
+# backdrop 是 acrylic / mica 时，工具栏也跟着垫同一种材质，色调取这里的 background。
 # [toolbar]
 # corner_radius_dip = 8            # 0~32
 # icon_corner_radius_dip = 6       # 0~16；图标悬停底色的圆角
 #
 # [toolbar.dark]
-# background = "#1A1A1A"           # 工具栏底色
+# background = "#1A1A1A"           # 工具栏底色；也是材质的色调
 # border = "rgba(255,255,255,.15)" # 外框
 # handle = "#8E8CD8"               # 左侧拖动条；不写时取同主题的 accent
 # divider = "rgba(255,255,255,.15)" # 分隔线
 # icon = "#FFFFFF"                 # 图标字形
 # hover = "rgba(255,255,255,.10)"  # 图标悬停底色
+# backdrop_opacity = 0.15          # 0~1；不写沿用同主题候选框的值
+# backdrop_luminosity = 0.96       # 0~1；同上
 #
 # [toolbar.light]
 # background = "#FFFFFF"

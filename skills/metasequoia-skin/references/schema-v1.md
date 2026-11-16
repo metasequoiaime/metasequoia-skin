@@ -45,7 +45,7 @@ source = "素材出处与授权说明"
 
 | 键 | 范围 / 取值 | 说明 |
 |---|---|---|
-| `min_width_dip` | 0~1000 | 卡片最小宽度；装饰图 `width_dip` 还会把它撑大 |
+| `min_width_dip` | 0~1000 / ≤10em | 卡片最小宽度；装饰图 `width_dip` 还会把它撑大 |
 | `corner_radius_dip` | 0~32 | 卡片圆角；0 = 直角 |
 | `border_width_dip` | 0~4 | 外框线宽；颜色取 `[candidate.*].border` |
 | `item_corner_radius_dip` | 0~16 | 选中 / 悬停高亮圆角 |
@@ -59,7 +59,7 @@ source = "素材出处与授权说明"
 
 `font_family` 不能含引号、反斜杠、逗号、分号、尖括号、花括号、反引号和 ASCII 控制字符；汉字可以。一次只能写一个字体名。
 
-**毛玻璃**走 `backdrop`：`acrylic`（亚克力）模糊卡片后面的窗口，`mica`（云母）取样桌面壁纸、只透出壁纸色调。它需要系统开着「透明效果」（设置 → 个性化 → 颜色）；关掉或系统太老（低于 Windows 10 1903；云母还要 Windows 11，更早的系统按亚克力画）时会退回不透明底色。同一张皮肤写了 `border_image` 时不生效（有面板贴图就不垫材质）。
+**毛玻璃**走 `backdrop`：`acrylic`（亚克力）模糊卡片后面的窗口，`mica`（云母）取样桌面壁纸、只透出壁纸色调。它需要系统开着「透明效果」（设置 → 个性化 → 颜色）；关掉或系统太老（低于 Windows 10 1903；云母还要 Windows 11，更早的系统按亚克力画）时会退回不透明底色。同一张皮肤写了 `border_image` 时不生效（有面板贴图就不垫材质）。**条形悬浮工具栏跟着垫同一种材质**（色调取 `[toolbar.*].background`，图片模式不垫），详见下面的 `[toolbar]`。
 
 ### 版式几何
 
@@ -75,14 +75,14 @@ source = "素材出处与授权说明"
 | `item_min_width` | 0~500 / ≤40em | 横排每项的最小宽度；0 = 不限 |
 | `number_gap` | 0~64 / ≤4em | 序号与候选之间的空 |
 | `number_scale` | 0~2 | 序号字号相对候选字号的比例，默认 0.8 |
-| `selected_bar_width` | 0~16 / ≤1em | 选中竖条宽度，默认 3 |
+| `selected_bar_width` | 0~16 / ≤1em | 选中竖条宽度；不写跟 `base`，内置清单是 `"0.17em"`（18 号字时约 3 DIP，字号变大跟着变宽） |
 | `selected_bar_height_em` | 0~2 | 选中竖条高度，按字号倍数，默认 0.85 |
 | `selected_bar_inside` | 布尔 | `true` = 竖条落在高亮左缘之内，而不是骑在左缘上 |
 | `item_corners_follow_card` | 布尔 | 落在卡片四角上的高亮角改用卡片圆角 |
 | `justify_rows` | 布尔 | 横排时把卡片多出的宽度均分给同一行，高亮铺满到卡片右边 |
 | `trim_hidden_preedit_gap` | 布尔 | 预编辑行隐藏时抵掉它与候选之间的 2 DIP 行距；贴角皮肤总是这样做 |
 | `page_arrow_style` | `chevron` / `triangle` | 翻页箭头样式；`triangle` 横排时前面会画一条分隔线 |
-| `preedit_margin_dip` | 1 / 2 / 4 个 0~500 的数值 | 预编辑行的外边距，按 CSS 简写展开成上右下左 |
+| `preedit_margin_dip` | 1 / 2 / 4 个 **-500~500** 的数值 | 预编辑行的外边距，按 CSS 简写展开成上右下左；**可以写负值**，把预编辑行推进卡片内边距里 |
 
 不写的版式键沿用 `base`；`[candidate_window]` 里的直接键对横排 / 竖排都生效。
 
@@ -96,12 +96,16 @@ item_gap = 2
 [candidate_window.horizontal]
 item_min_width = "3.5em"
 item_gap = "0.15em"
+page_arrows = true
 
 [candidate_window.vertical]
 selected_bar_height_em = 0.8
+min_width_dip = 420
 ```
 
-`.horizontal` / `.vertical` 只覆盖写了的键，优先于直接键。子表必须排在直接键之后。
+`.horizontal` / `.vertical` 只覆盖写了的键，优先于直接键；**两张子表互不继承**，只写竖排时横排仍用直接键那份。除了上面的版式键，子表里还能写 `min_width_dip`（只抬高那一种排布的最小宽度，也接受 `em`）、`fit_content` 和 `page_arrows`（按排布单独开关）。子表必须排在直接键之后。
+
+按排布单独抬最小宽度最常用的场景是竖排：翻译晚到会把行撑宽、翻译折行后列表又被撑高，给竖排留出并排空间就不会顶到面板底边。
 
 ### `[candidate_window.decoration]`（可选）
 
@@ -113,6 +117,9 @@ selected_bar_height_em = 0.8
 | `top_inset_dip` | 装饰框高度，0~500 且 > 0 |
 | `width_dip` | 装饰框宽度，0~1000 且 > 0 |
 | `align` | `left` / `center` / `right`，默认 `right` |
+| `layouts` | 可选，只在哪些排布里显示：`["horizontal"]` 或 `["vertical"]`（可写两个）；不写则横竖都画 |
+
+`layouts` 也管最小宽度：不在当前排布里的装饰图不画，`max(160, min_width_dip, width_dip)` 里那一项也跟着作废，所以横排挂大立绘、竖排不挂时不必为竖排留白。
 
 装饰图上可以叠一个候选词（例如把首选词写进立绘的对话框）。只有 `candidate_overlay = true` 时，下面这组键才会被解析：
 
@@ -205,6 +212,7 @@ Windows 11 默认值可作参考：亚克力深色 `#2c2c2c` / `0.15` / `0.96`�
 - `icon_corner_radius_dip`：0~16，图标悬停底色的圆角
 - `[toolbar.dark]` / `[toolbar.light]`：`background`、`border`、`handle`（左侧拖动条）、`divider`、`icon`、`hover`
 - `handle` 不写时取同主题的 `[candidate.*].accent`，与选中竖条、预编辑光标同色；`accent` 也没写才沿用 `base`
+- **系统材质**：`candidate_window.backdrop` 是 `acrylic` / `mica` 时，条形工具栏也垫同一种材质，色调取 `[toolbar.*].background`。`[toolbar.dark]` / `[toolbar.light]` 里还可以写 `backdrop_opacity`、`backdrop_luminosity`（0~1 的数字，含义同 `[candidate.*]` 里那两个键），不写时沿用同一主题的候选框值；透明效果关闭或系统不支持时 `background` 按不透明画，图片模式不垫材质
 
 工具栏整块换成图片、按钮贴图与自动排列，见 [toolbar-image-mode.md](toolbar-image-mode.md)。
 

@@ -123,13 +123,13 @@ uv run skills\metasequoia-skin\scripts\check_skin.py path\to\my-skin
 | 卡片背后的系统材质 | `candidate_window.backdrop`（`none` / `acrylic` / `mica`） |
 | 候选字体族（**不是字号**） | `candidate_window.font_family` |
 | 卡片严格按文字宽度收紧 | `candidate_window.fit_content`（`true` / `false`） |
-| 候选窗版式（内边距、间距、序号、选中竖条、高亮贴角 / 整行铺满、预编辑行边距） | `[candidate_window]` 的版式键，以及 `[candidate_window.horizontal]` / `[candidate_window.vertical]` 覆盖 |
+| 候选窗版式（内边距、间距、序号、选中竖条、高亮贴角 / 整行铺满、预编辑行边距、最小宽度、贴文字收紧、翻页箭头） | `[candidate_window]` 的版式键，以及 `[candidate_window.horizontal]` / `[candidate_window.vertical]` 覆盖（两张子表互不继承） |
 | 横排卷轴展开 | `candidate_window.expand_panel`（`true` / `false`）+ `expand_rows`（2~8） |
 | 翻页箭头样式 | `candidate_window.page_arrows`、`page_arrow_style`（`chevron` / `triangle`）、`[candidate.*].page_arrow_divider` |
-| 卡片内背景图 / 卡片上方装饰图 / 装饰图上叠候选词 | `candidate_window.background` / `candidate_window.decoration`（含 `candidate_overlay*`） |
-| 悬浮工具栏配色与圆角 | `[toolbar]` / `[toolbar.dark]` / `[toolbar.light]`、`icon_corner_radius_dip` |
+| 卡片内背景图 / 卡片上方装饰图（可按横竖排显示）/ 装饰图上叠候选词 | `candidate_window.background` / `candidate_window.decoration`（含 `candidate_overlay*`、`layouts`） |
+| 悬浮工具栏配色与圆角（候选框垫亚克力 / 云母时工具栏跟着垫） | `[toolbar]` / `[toolbar.dark]` / `[toolbar.light]`、`icon_corner_radius_dip`、`backdrop_opacity` / `backdrop_luminosity` |
 | 悬浮工具栏图片模式（背景图、按钮位置 / 状态图、自动排列） | `[toolbar] mode = "image"`、`image` / `image_width_dip` / `image_height_dip`、`[toolbar.buttons.<按钮>]`、`button_defaults`、`button_flow` |
-| **v2（`schema_version = 2`，`base = "canvas"`）**：整块面板贴图（九宫格拉伸 / 平铺、浅色与竖排各可换一张）、面板内安全内边距（含竖排覆盖）、行距、卡片外立绘挂件（多层）、卡片外留白、动图原生播放 | `candidate_window.border_image`（`source` / `light_source` / `repeat` / `.vertical`）、`content_insets_dip`（含 `.vertical`）、`line_gap_dip`、`[[candidate_window.decorations]]`、`outer_insets_dip` |
+| **v2（`schema_version = 2`，`base = "canvas"`）**：整块面板贴图（九宫格拉伸 / 平铺 `stretch` / `repeat` / `round` / `space`、浅色、横排与竖排各可换一张）、面板内安全内边距（可按排布覆盖、可关掉按边宽兜底）、行距、卡片外立绘挂件（多层、可按排布显示）、卡片外留白（可按排布预留）、动图原生播放 | `candidate_window.border_image`（`source` / `light_source` / `repeat` / `.horizontal` / `.vertical`）、`content_insets_dip`（含 `clamp_to_border` 与 `.horizontal` / `.vertical`）、`line_gap_dip`、`[[candidate_window.decorations]]`（含 `layouts`）、`outer_insets_dip`（含 `.horizontal` / `.vertical`） |
 
 | 做不到 | 说明 |
 |---|---|
@@ -221,13 +221,14 @@ preedit_divider = "#6B69D6"
 
 `[animation]` 和装饰图的 `motion` / `motion_period_ms` 是 msime 各平台共用的 v2 键；Windows 目前按静态图显示，不报错也不提示，写了也不会动。
 
-### 五条容易踩的规则
+### 六条容易踩的规则
 
 1. **十六进制必须带 `#`**，不透明度在末尾（`#RRGGBBAA`，不是 `#AARRGGBB`）。颜色值只放行纯 ASCII 白名单：含**非 ASCII 字符**（`绿色`）或白名单外符号（`;`、`{}`、引号）的写法会被 Server 拒收整个包；`lightblue`、`hsl(...)` 这类纯 ASCII 写法能装能加载，只是渲染认不出来、会静默退回默认色（`check_skin.py` 会为此报警告）。
 2. **`dark` 和 `light` 都要写全**。同一个键没写时走 `base` 的令牌，而 `base` 自己还有一套，漏写就会在某些 `base` 下和预期不一样。
 3. **设置页的「候选文字颜色」压过** `text` / `candidate_text` / `preedit_text`，别靠这三个键定候选文字主色。
 4. **v2 必须 `base = "canvas"`**。`schema_version = 2` 只是声明，真正的地基是 `canvas`；写了 `2` 却用别的基底，整包仍能装也能用，但按 v1 加载、v2 字段全部被忽略。反过来 `schema_version = 1` 配 `canvas` 会被直接拒收。
-5. **`backdrop`（亚克力 / 云母）依赖系统「透明效果」**，关掉或不支持（低于 Windows 10 1903，云母还要 Windows 11）时会退回不透明底色；同一张皮肤写了 `border_image` 时不生效——面板贴图和系统材质只能留一种。
+5. **`backdrop`（亚克力 / 云母）依赖系统「透明效果」**，关掉或不支持（低于 Windows 10 1903，云母还要 Windows 11）时会退回不透明底色；同一张皮肤写了 `border_image` 时不生效——面板贴图和系统材质只能留一种。条形悬浮工具栏会跟着垫同一种材质（图片模式不垫）。
+6. **`horizontal` / `vertical` 子表只覆盖、不继承**。`[candidate_window.*]` 与 `border_image`、`content_insets_dip`、`outer_insets_dip` 的同名子表都只改写了的键，两张子表互不继承；唯一跟着走的是 `border_image` 的 `light_source`——子表换了 `source` 又没写 `light_source` 时不会沿用共用的浅色图。
 
 ## 目录结构
 

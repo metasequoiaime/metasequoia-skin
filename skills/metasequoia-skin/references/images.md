@@ -22,7 +22,7 @@
 
 - **两张图都只有一份，不分明暗主题**（它们挂在 `[candidate_window]` 下，不在 `[candidate.dark]` / `[candidate.light]` 里）。所以一张图必须在两套主题下都成立，最稳的做法是只放「中性纹理 / 高光」——图自身带 alpha，颜色交给各主题的 `surface`；想深色下更亮、浅色下更淡只能靠 `opacity` 折中。
 - 装饰图的**宽高比要和 `width_dip` / `top_inset_dip` 对得上**，否则盒内留白。
-- 有装饰图时，候选框最小宽度会自动取 `max(160, min_width_dip, width_dip)`；`fit_content = true` 时那个 160 不再垫（按 0 算）。装饰图不会跑出卡片。
+- 有装饰图时，候选框最小宽度会自动取 `max(160, min_width_dip, width_dip)`；`fit_content = true` 时那个 160 不再垫（按 0 算）。装饰图写了 `layouts` 又不含当前排布时它不画，`width_dip` 也不再参与这个最小值。装饰图不会跑出卡片。
 - 装饰图上叠加的候选词**不是图片**：它用候选字体画出来，字号由 `candidate_overlay_font_size_dip` 单独决定（这不是候选本体字号）。词太宽时会先缩到 `candidate_overlay_min_font_size_dip`，再宽就允许超出装饰框，不折行。
 
 ## 工具栏图片模式的图片
@@ -35,8 +35,8 @@
 
 ## v2 的图片
 
-- **九宫格面板图**（`border_image.source` / `light_source`）：默认切成九块拉伸，所以四条切片线要画在纯纹理处；一般是一张大图（如 400×300），四角是完整的花纹 / 圆角。`repeat` 改平铺时按源图原尺寸一块块铺，适合可无限加长的花纹边框。扩展名只能是 `.png` / `.apng` / `.gif` / `.webp`。
-- **竖排面板图**（`[candidate_window.border_image.vertical]`）：横竖排图尺寸不同就各写一套 `slice_dip`；`light_source` 不继承横排，竖排要浅色变体必须自己写。竖排面板比横排窄时，右 / 左边距通常也要用 `[candidate_window.content_insets_dip.vertical]` 单独收窄。
+- **九宫格面板图**（`border_image.source` / `light_source`）：默认切成九块拉伸，所以四条切片线要画在纯纹理处；一般是一张大图（如 400×300），四角是完整的花纹 / 圆角。`repeat` 换成平铺时不再拉伸：`repeat` 按源图原尺寸铺、末尾裁掉，`round` 缩放成整数块收口，`space` 按原尺寸铺、剩余空间均分成空隙。可无限加长的花纹边框用 `round` / `space` 更整齐。扩展名只能是 `.png` / `.apng` / `.gif` / `.webp`。
+- **横排 / 竖排面板图**（`[candidate_window.border_image.horizontal]` / `.vertical`）：横竖排图尺寸不同就各写一套 `slice_dip`；`light_source` 跟着 `source` 走——子表换了图又没写 `light_source` 时不会沿用共用那张浅色图。竖排面板比横排窄时，右 / 左边距通常也要用 `[candidate_window.content_insets_dip.vertical]` 单独收窄。
 - **卡片外挂件**（`decorations[].image`）：扩展名同上，盒子由 `width_dip` / `height_dip` 给出。图片在框内 **contain 等比缩放、居中**，所以**盒子最好与图片宽高比一致**，比例差得多时四周会留白。
 - **面板图也能放动图**，但一般建议用静态图，把动画留给挂件。
 

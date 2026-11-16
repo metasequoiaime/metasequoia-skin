@@ -39,12 +39,12 @@
 | `fit_content` 写了就必须是布尔 | candidate_window.fit_content 必须是 true 或 false |
 | `expand_panel` 写了就必须是布尔 | candidate_window.expand_panel 必须是 true 或 false |
 | `expand_rows` 写了必须是 **2~8 的整数**（浮点、布尔、字符串都不行） | candidate_window.expand_rows 必须是 2–8 的整数 |
-| 版式长度键（`padding` / `item_gap` / `item_extra_height` / `number_inset` / `item_padding_right` / `item_min_width` / `number_gap` / `selected_bar_width`）只能写 **DIP 数字**或 **`"<数值>em"` 字符串**；越界、负值、`"10px"`、`"1.5EM"` 都非法 | candidate_window 的版式数值无效 |
-| `number_scale`、`selected_bar_height_em` 写了必须是 0~2 的数字；`selected_bar_inside`、`item_corners_follow_card`、`justify_rows`、`trim_hidden_preedit_gap` 写了必须是布尔 | candidate_window 的版式数值无效 |
+| 版式长度键（`padding` / `item_gap` / `item_extra_height` / `number_inset` / `item_padding_right` / `item_min_width` / `number_gap` / `selected_bar_width` / `min_width_dip`）只能写 **DIP 数字**或 **`"<数值>em"` 字符串**；越界、负值、`"10px"`、`"1.5EM"` 都非法（`min_width_dip` 的 em 上限是 10em，其余见 [schema-v1.md](schema-v1.md)） | candidate_window 的版式数值无效 |
+| `number_scale`、`selected_bar_height_em` 写了必须是 0~2 的数字；`selected_bar_inside`、`item_corners_follow_card`、`justify_rows`、`trim_hidden_preedit_gap`、`fit_content`、`page_arrows` 写了必须是布尔 | candidate_window 的版式数值无效 |
 | `page_arrow_style` 只能是 `chevron` / `triangle` | candidate_window 的版式数值无效 |
-| `preedit_margin_dip` 必须是 1 / 2 / 4 个 0~500 的数值（按 CSS 简写展开成上右下左） | candidate_window 的版式数值无效 |
-| `[candidate_window.horizontal]` / `[candidate_window.vertical]` 一旦出现必须是表，里面的版式键遵守同一套范围 | candidate_window 的版式数值无效 |
-| `[candidate_window.decoration]` **可选**；一旦出现就**必须**同时有 `image` 和 `top_inset_dip`、`width_dip`，且 `align` 只能是 left / center / right | candidate_window.decoration 无效 |
+| `preedit_margin_dip` 必须是 1 / 2 / 4 个 **-500~500** 的数值（按 CSS 简写展开成上右下左，可以写负值） | candidate_window 的版式数值无效 |
+| `[candidate_window.horizontal]` / `[candidate_window.vertical]` 一旦出现必须是表，里面的版式键遵守同一套范围（含 `min_width_dip` / `fit_content` / `page_arrows`） | candidate_window 的版式数值无效 |
+| `[candidate_window.decoration]` **可选**；一旦出现就**必须**同时有 `image` 和 `top_inset_dip`、`width_dip`，且 `align` 只能是 left / center / right；`layouts` 只能是不重复的 horizontal / vertical 数组 | candidate_window.decoration 无效 / candidate_window.decoration.layouts 只能是 horizontal 或 vertical |
 | `top_inset_dip` ∈ (0, 500]、`width_dip` ∈ (0, 1000]，**两个都必须 > 0** | candidate_window.decoration 尺寸无效 |
 | `decoration.image` 指向的文件必须真实存在 | 找不到 candidate_window.decoration.image 文件 |
 | `candidate_overlay` 写了就必须是布尔；只有为 `true` 时下面这组键才被解析 | candidate_window.decoration.candidate_overlay 必须是 true 或 false |
@@ -66,7 +66,7 @@
 
 | 规则 | 违反后的报错 |
 |---|---|
-| `[toolbar]` 给了必须是表，`[toolbar.dark]` / `[toolbar.light]` 给了必须是表，键集同配色规则 | toolbar 配色无效 |
+| `[toolbar]` 给了必须是表，`[toolbar.dark]` / `[toolbar.light]` 给了必须是表，颜色键同配色规则；这两张子表里还可以写 `backdrop_opacity` / `backdrop_luminosity`（0~1 的数字，不是颜色） | toolbar 配色无效 |
 | `[toolbar] corner_radius_dip` 写了必须是 0~32；`icon_corner_radius_dip` 写了必须是 0~16 | toolbar.corner_radius_dip 超出范围 / toolbar.icon_corner_radius_dip 超出范围 |
 | `[toolbar] mode` 只能是 `bar` / `image` | toolbar.mode 只能是 bar 或 image |
 | `toolbar.image` 必须是包内相对路径且扩展名在 `.png` / `.apng` / `.gif` / `.webp` 里；`image_width_dip` / `image_height_dip` 各 0~2000 | toolbar.image 无效（需为皮肤目录里的 .png、.apng、.gif 或 .webp） / toolbar.image_width_dip / image_height_dip 必须是 0–2000 的数值 |
@@ -92,20 +92,22 @@
 | **v2**：`slice_dip` 必填（1 / 2 / 4 个 0~500 的数值，单位是源图像素） | candidate_window.border_image 缺少 slice_dip / candidate_window.border_image.slice_dip 必须是 1、2 或 4 个 0–500 的数值 |
 | **v2**：`stretch_dip` / `width_dip` 写了就必须是 1 / 2 / 4 个 0~500 的数值（不是数组、长度不对、越界都报错；前者是源图像素，后者是屏幕 DIP） | candidate_window.border_image.stretch_dip 必须是 1、2 或 4 个 0–500 的数值 / candidate_window.border_image.width_dip 必须是 1、2 或 4 个 0–500 的数值 |
 | **v2**：`fill` 写了必须是布尔 | candidate_window.border_image.fill 必须是 true 或 false |
-| **v2**：`repeat` 只能是 `stretch` / `repeat`，写 1 个或 2 个值（横向 纵向） | candidate_window.border_image.repeat 必须是 stretch 或 repeat，1 个或 2 个值 |
+| **v2**：`repeat` 只能是 `stretch` / `repeat` / `round` / `space`，写 1 个或 2 个值（横向 纵向） | candidate_window.border_image.repeat 必须是 stretch、repeat、round 或 space，1 个或 2 个值 |
 | **v2**：`border_image.source` / `light_source` 指向的文件必须真实存在 | 找不到 candidate_window.border_image.source 文件 / 找不到 candidate_window.border_image.light_source 文件 |
-| **v2**：`[candidate_window.border_image.vertical]` 必须是表；`source` / `slice_dip` 不写继承横排，写了就按上面的规则校验；`light_source` 不继承 | candidate_window.border_image.vertical 必须是表 / candidate_window.border_image.vertical.source 无效（需为 .png、.apng、.gif 或 .webp） / .light_source 同 / .vertical.slice_dip 必须是 1、2 或 4 个 0–500 的数值 / .vertical.repeat 必须是 stretch 或 repeat，1 个或 2 个值 |
-| **v2**：竖排面板图（含浅色变体）指向的文件必须真实存在 | 找不到 candidate_window.border_image.vertical.source 文件 / 找不到 candidate_window.border_image.vertical.light_source 文件 |
-| **v2**：`[candidate_window.content_insets_dip]` 必须是表，四边各自 0~上限（top / bottom ≤ 200，left / right ≤ 500），缺的边按 0；空表等于四边全 0，不会再按「边宽 + 5 DIP」留白 | candidate_window.content_insets_dip 必须是表 / candidate_window.content_insets_dip 数值超出范围 |
-| **v2**：`[candidate_window.content_insets_dip.vertical]` 必须是表，只校验写了的边，范围同上 | candidate_window.content_insets_dip.vertical 必须是表 / candidate_window.content_insets_dip.vertical 数值超出范围 |
+| **v2**：`[candidate_window.border_image.horizontal]` / `.vertical` 必须是表；`source` / `slice_dip` 不写继承共用那份，写了就按上面的规则校验；换 `source` 又没写 `light_source` 时不继承浅色图 | candidate_window.border_image.horizontal 必须是表 / .horizontal.source 无效（需为 .png、.apng、.gif 或 .webp） / .horizontal.slice_dip 必须是 1、2 或 4 个 0–500 的数值 / .horizontal.repeat 同上（`.vertical` 同） |
+| **v2**：横排 / 竖排面板图（含浅色变体）指向的文件必须真实存在 | 找不到 candidate_window.border_image.horizontal.source 文件 / 找不到 candidate_window.border_image.vertical.light_source 文件 |
+| **v2**：`[candidate_window.content_insets_dip]` 必须是表，四边各自 0~上限（top / bottom ≤ 200，left / right ≤ 500），缺的边按 0；空表等于四边全 0，不会再按「边宽 + 5 DIP」留白；`clamp_to_border` 写了必须是布尔 | candidate_window.content_insets_dip 必须是表 / candidate_window.content_insets_dip 数值超出范围 / candidate_window.content_insets_dip.clamp_to_border 必须是 true 或 false |
+| **v2**：`[candidate_window.content_insets_dip.horizontal]` / `.vertical` 必须是表，只校验写了的边，范围同上；`clamp_to_border` 只能写布尔 | candidate_window.content_insets_dip.horizontal 必须是表 / .horizontal 数值超出范围 / .horizontal.clamp_to_border 必须是 true 或 false |
 | **v2**：`line_gap_dip` 必须是 0~100 的数字 | candidate_window.line_gap_dip 超出范围 |
 | **v2**：`[candidate_window.outer_insets_dip]` 必须是表，四边各自 ≤ 500 | candidate_window.outer_insets_dip 必须是表 / candidate_window.outer_insets_dip 数值超出范围 |
+| **v2**：`[candidate_window.outer_insets_dip.horizontal]` / `.vertical` 必须是表，只校验写了的边，范围同上 | candidate_window.outer_insets_dip.horizontal 必须是表 / .horizontal 数值超出范围 |
 | **v2**：`[[candidate_window.decorations]]` 必须是数组，最多 32 层 | candidate_window.decorations 必须是数组 / candidate_window.decorations 最多 32 层 |
 | **v2**：每项要有 `image`（文件要存在、扩展名只能在白名单里） | candidate_window.decorations.image 无效（需为 .png、.apng、.gif 或 .webp） |
 | **v2**：`anchor` 只能是九个锚点之一 | candidate_window.decorations.anchor 无效 |
 | **v2**：`width_dip` 与 `height_dip` 都要 > 0 且 ≤ 2000 | candidate_window.decorations 的 width_dip 与 height_dip 必须大于 0 |
 | **v2**：`offset_x_dip` / `offset_y_dip` 写了必须在 -2000~2000 之间 | candidate_window.decorations 的 offset_x_dip / offset_y_dip 必须在 -2000–2000 之间 |
 | **v2**：`z_index` 写了必须是 -1000~1000 的整数 | candidate_window.decorations.z_index 必须是 -1000–1000 的整数 |
+| **v2**：`layouts` 写了必须是不重复的 horizontal / vertical 数组 | candidate_window.decorations.layouts 必须是 horizontal / vertical 的数组 |
 | **v2**：`decorations[].image` 指向的文件必须真实存在 | 找不到 candidate_window.decorations.image 文件 |
 | **v2 字段写在没配 `canvas` 的皮肤里** | 不报错：按 v1 加载，字段全部忽略，设置页诊断里多一条说明 |
 | `[animation]`、装饰图的 `motion` / `motion_period_ms` | msime 共用 v2 键，Windows 按静态图显示：不报错、不提示，也不会动 |
@@ -127,4 +129,4 @@ python scripts/check_skin.py <皮肤包目录>   # 单个包
 python scripts/check_skin.py <skins 根目录>  # 一次校验多个子目录（自动跳过 default 与 *.bak）
 ```
 
-需要 Python 3.11+（只用标准库 `tomllib`）。没有 python 就 `uv run`。脚本同时校验 v1 与 v2，包括版式几何、卷轴展开、翻页箭头样式、工具栏图片模式、装饰图叠加候选、九宫格 `repeat` 与竖排覆盖：格式错误报错，其它问题以警告给出。
+需要 Python 3.11+（只用标准库 `tomllib`）。没有 python 就 `uv run`。脚本同时校验 v1 与 v2，包括版式几何（含 `min_width_dip` / `fit_content` / `page_arrows` 的按排布覆盖）、卷轴展开、翻页箭头样式、工具栏图片模式、装饰图叠加候选、九宫格 `repeat`（`stretch` / `repeat` / `round` / `space`）与横排 / 竖排覆盖（`border_image`、`content_insets_dip`、`outer_insets_dip`）、挂件 `layouts`、工具栏材质参数：格式错误报错，其它问题以警告给出。

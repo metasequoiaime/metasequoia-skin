@@ -8,10 +8,13 @@
 行距、面板外留白）。v2 必须以 base = "canvas" 为基底：写了 2 而 base 不是 canvas 的皮肤按 v1 加载，
 其中的 v2 字段（连同其中的错误）被忽略，只多一条警告；schema_version = 1 用 canvas 直接报错。
 
-还覆盖 v1 的版式几何（[candidate_window] 与 horizontal / vertical 子表）、卷轴展开（expand_panel /
-expand_rows）、翻页箭头样式（page_arrow_style / page_arrow_divider）、工具栏图片模式（[toolbar]
-mode = "image"、[toolbar.buttons.*]、button_defaults、button_flow）、装饰图叠加候选（candidate_overlay_*），
-以及 v2 的九宫格 repeat 与竖排覆盖（[border_image.vertical]、[content_insets_dip.vertical]）。
+还覆盖 v1 的版式几何（[candidate_window] 与 horizontal / vertical 子表，含 min_width_dip / fit_content /
+page_arrows 的按排布覆盖）、卷轴展开（expand_panel / expand_rows）、翻页箭头样式（page_arrow_style /
+page_arrow_divider）、工具栏图片模式（[toolbar] mode = "image"、[toolbar.buttons.*]、button_defaults、
+button_flow）、工具栏材质参数（[toolbar.*].backdrop_opacity / backdrop_luminosity）、装饰图叠加候选
+（candidate_overlay_*）与装饰图 / 挂件的 layouts，以及 v2 的九宫格 repeat（stretch / repeat / round /
+space）、横排 / 竖排覆盖（border_image、content_insets_dip、outer_insets_dip 三张表的 .horizontal /
+.vertical）与 content_insets_dip 的 clamp_to_border。
 
 用法：
     uv run check_skin.py <皮肤包目录>      # 目录里应有 skin.toml
@@ -72,6 +75,8 @@ GEOMETRY_LENGTH_LIMITS = {
     "item_min_width": (500.0, 40.0),
     "number_gap": (64.0, 4.0),
     "selected_bar_width": (16.0, 1.0),
+    # 共享表与 horizontal / vertical 子表都能写；子表用它只抬高那一种排布的最小宽度。
+    "min_width_dip": (1000.0, 10.0),
 }
 # 版式里直接按数字上限的键（ReadOptionalBounded）。
 GEOMETRY_NUMBER_LIMITS = {
@@ -83,9 +88,14 @@ GEOMETRY_BOOL_KEYS = (
     "item_corners_follow_card",
     "justify_rows",
     "trim_hidden_preedit_gap",
+    # fit_content / page_arrows 也能写进 horizontal / vertical 子表，只影响那一种排布。
+    "fit_content",
+    "page_arrows",
 )
-# [candidate_window.border_image] / .vertical 的 repeat：stretch（拉伸）或 repeat（按源图平铺）。
-BORDER_IMAGE_REPEATS = ("stretch", "repeat")
+# [candidate_window.border_image] / .horizontal / .vertical 的 repeat：同 CSS border-image-repeat。
+BORDER_IMAGE_REPEATS = ("stretch", "repeat", "round", "space")
+# [toolbar.dark] / [toolbar.light] 里跟颜色键并列的两个材质参数（0~1 的数字，不是颜色）。
+TOOLBAR_MATERIAL_KEYS = ("backdrop_opacity", "backdrop_luminosity")
 # [toolbar] mode：bar（矩形条）/ image（整张背景图）。
 TOOLBAR_MODES = ("bar", "image")
 TOOLBAR_FLOW_DIRECTIONS = ("horizontal", "vertical")
@@ -277,16 +287,18 @@ def bounded_number(table: dict, key: str, maximum: float) -> float | None:
 
 
 def read_slice_array(
-    table: dict, key: str, maximum: float = 500.0
+    table: dict, key: str, maximum: float = 500.0, minimum: float = 0.0
 ) -> tuple[str, list[float]]:
-    """对应 border_image 的 slice_dip / stretch_dip / width_dip。
+    """对应 border_image 的 slice_dip / stretch_dip / width_dip，以及 preedit_margin_dip。
 
     返回 (状态, 值)，状态取自：
       "absent"   没写这个键（三个键里只有它不算错，slice_dip 缺了会报错）
       "not-list" 写了但不是数组（三个键都会因此报错）
       "shape"    数组长度不是 1、2 或 4
-      "value"    数组里有没有 0~maximum 之外的值
+      "value"    数组里有没有 minimum~maximum 之外的值
       "ok"       合法
+
+    preedit_margin_dip 传 minimum = -500：负的上外边距把预编辑行往上挪。
     """
     if key not in table:
         return "absent", []
@@ -297,8 +309,8 @@ def read_slice_array(
         return "shape", []
     out: list[float] = []
     for item in value:
-        number = bounded_value(item, maximum)
-        if number is None:
+        number = numeric_value(item)
+        if number is None or number < minimum or number > maximum:
             return "value", []
         out.append(number)
     return "ok", out
@@ -312,7 +324,7 @@ def read_optional_bounded(table: dict, key: str, maximum: float) -> bool:
 
 
 def read_border_image_repeat(table: dict) -> bool:
-    """对应 ReadBorderImageRepeat：stretch / repeat，1 个或 2 个值（横向 纵向）。"""
+    """对应 ReadBorderImageRepeat：stretch / repeat / round / space，1 个或 2 个值（横向 纵向）。"""
     if "repeat" not in table:
         return True
     value = table["repeat"]
@@ -377,8 +389,8 @@ def read_geometry(table: dict) -> bool:
         ok, _ = read_enum(table, "page_arrow_style", PAGE_ARROW_STYLES)
         if not ok:
             return False
-    # preedit_margin_dip 用 ReadBoxValues：1 / 2 / 4 个 0~500 的数值，按 CSS 简写展开。
-    state, _ = read_slice_array(table, "preedit_margin_dip")
+    # preedit_margin_dip 用 ReadBoxValues：1 / 2 / 4 个 -500~500 的数值，按 CSS 简写展开；可以写负值。
+    state, _ = read_slice_array(table, "preedit_margin_dip", minimum=-500.0)
     if state not in ("absent", "ok"):
         return False
     return True
@@ -490,7 +502,7 @@ def read_menu_colors(table: object) -> tuple[bool, dict[str, str]]:
 
 
 def read_toolbar_colors(table: object) -> tuple[bool, dict[str, str]]:
-    """对应 ReadToolbarColors：必须是表，且每个颜色值过一遍 CSS 字符白名单。"""
+    """对应 ReadToolbarColors：必须是表，颜色值过一遍 CSS 字符白名单，材质参数是 0~1 的数字。"""
     if table is None:
         return True, {}
     if not isinstance(table, dict):
@@ -505,6 +517,9 @@ def read_toolbar_colors(table: object) -> tuple[bool, dict[str, str]]:
         if not set(value) <= CSS_COLOR_CHARS:
             return False, {}
         out[key] = value
+    for key in TOOLBAR_MATERIAL_KEYS:
+        if key in table and bounded_value(table[key], 1.0) is None:
+            return False, {}
     return True, out
 
 
@@ -978,7 +993,7 @@ def validate_package(package_dir: Path) -> tuple[list[str], list[str]]:
     if not isinstance(window, dict):
         errors.append("缺少 candidate_window")
         return errors, warnings
-    if bounded_number(window, "min_width_dip", 1000.0) is None:
+    if not read_length(window, "min_width_dip", 1000.0, 10.0):
         errors.append("candidate_window.min_width_dip 超出范围")
         return errors, warnings
     corner_radius: float | None = None
@@ -1007,7 +1022,15 @@ def validate_package(package_dir: Path) -> tuple[list[str], list[str]]:
     if not read_optional_bool(window, "fit_content"):
         errors.append("candidate_window.fit_content 必须是 true 或 false")
         return errors, warnings
-    fit_content_given = "fit_content" in window
+    # fit_content / page_arrows 也能只写进 horizontal / vertical 子表，提示「没写」时要把三处都算上。
+    layout_tables = [
+        window[key]
+        for key in ("horizontal", "vertical")
+        if isinstance(window.get(key), dict)
+    ]
+    fit_content_given = "fit_content" in window or any(
+        "fit_content" in table for table in layout_tables
+    )
     font_family: str | None = None
     if "font_family" in window:
         font_ok, font_family = read_string(window, "font_family", 64, True)
@@ -1017,7 +1040,9 @@ def validate_package(package_dir: Path) -> tuple[list[str], list[str]]:
     if not read_optional_bool(window, "page_arrows"):
         errors.append("candidate_window.page_arrows 必须是 true 或 false")
         return errors, warnings
-    page_arrows_given = "page_arrows" in window
+    page_arrows_given = "page_arrows" in window or any(
+        "page_arrows" in table for table in layout_tables
+    )
     if not read_optional_bool(window, "expand_panel"):
         errors.append("candidate_window.expand_panel 必须是 true 或 false")
         return errors, warnings
@@ -1057,6 +1082,14 @@ def validate_package(package_dir: Path) -> tuple[list[str], list[str]]:
         if not image_ok or not align_ok:
             errors.append("candidate_window.decoration 无效")
             return errors, warnings
+        # layouts 可选：只在横排或竖排显示，不写则两种排布都画。
+        if "layouts" in decoration:
+            decoration_layouts_ok, _ = read_enum_array(decoration, "layouts", LAYOUTS)
+            if not decoration_layouts_ok:
+                errors.append(
+                    "candidate_window.decoration.layouts 只能是 horizontal 或 vertical"
+                )
+                return errors, warnings
         top = bounded_number(decoration, "top_inset_dip", 500.0)
         width = bounded_number(decoration, "width_dip", 1000.0)
         if top is None or width is None or top <= 0.0 or width <= 0.0:
@@ -1093,9 +1126,8 @@ def validate_package(package_dir: Path) -> tuple[list[str], list[str]]:
     # v2 专有字段：只在 schema_version = 2（即 base = canvas）时被解析。
     border_image_image: str | None = None
     border_image_light: str | None = None
-    border_image_vertical_image: str | None = None
-    border_image_vertical_light: str | None = None
-    border_image_vertical_source_given = False
+    # 横排 / 竖排子表里单独换过的图：(相对路径, 找不到时的报错文案, 警告标签)。
+    border_image_layout_files: list[tuple[str, str, str]] = []
     decoration_images: list[str] = []
     if schema_version >= 2:
         if "border_image" in window:
@@ -1154,73 +1186,85 @@ def validate_package(package_dir: Path) -> tuple[list[str], list[str]]:
                 return errors, warnings
             if not read_border_image_repeat(border_image):
                 errors.append(
-                    "candidate_window.border_image.repeat 必须是 stretch 或 repeat，1 个或 2 个值"
+                    "candidate_window.border_image.repeat 必须是 stretch、repeat、round 或 "
+                    "space，1 个或 2 个值"
                 )
                 return errors, warnings
 
-            # 竖排覆盖：只写与横排不同的键。source / slice_dip 不写就继承横排；
-            # light_source 不继承——横排那张浅色图是按横排几何画的。
-            if "vertical" in border_image:
-                vertical = border_image["vertical"]
-                if not isinstance(vertical, dict):
-                    errors.append("candidate_window.border_image.vertical 必须是表")
+            # 横排 / 竖排覆盖：都只写与共用那份不同的键，两张子表互不继承。
+            # light_source 跟着 source 走：子表换了 source 又没写 light_source 时，
+            # 共用那张浅色图是按另一张图的几何画的，不能沿用。
+            for layout in LAYOUTS:
+                if layout not in border_image:
+                    continue
+                override = border_image[layout]
+                where = f"candidate_window.border_image.{layout}"
+                if not isinstance(override, dict):
+                    errors.append(f"{where} 必须是表")
                     return errors, warnings
-                border_image_vertical_image = border_image_image
-                if "source" in vertical:
-                    border_image_vertical_source_given = True
-                    source_ok, border_image_vertical_image = read_resource(
-                        vertical, "source"
-                    )
+                layout_source = border_image_image
+                source_given = False
+                if "source" in override:
+                    source_given = True
+                    source_ok, layout_source = read_resource(override, "source")
                     if (
                         not source_ok
-                        or border_image_vertical_image is None
-                        or not is_animatable_image_path(border_image_vertical_image)
+                        or layout_source is None
+                        or not is_animatable_image_path(layout_source)
                     ):
                         errors.append(
-                            "candidate_window.border_image.vertical.source 无效"
-                            "（需为 .png、.apng、.gif 或 .webp）"
+                            f"{where}.source 无效（需为 .png、.apng、.gif 或 .webp）"
                         )
                         return errors, warnings
-                if "light_source" in vertical:
-                    light_ok, border_image_vertical_light = read_resource(
-                        vertical, "light_source"
-                    )
+                    if layout_source != border_image_image:
+                        border_image_layout_files.append(
+                            (
+                                layout_source,
+                                f"找不到 {where}.source 文件",
+                                f"{'横排' if layout == 'horizontal' else '竖排'}九宫格面板图",
+                            )
+                        )
+                layout_light: str | None = None
+                if "light_source" in override:
+                    light_ok, layout_light = read_resource(override, "light_source")
                     if (
                         not light_ok
-                        or border_image_vertical_light is None
-                        or not is_animatable_image_path(border_image_vertical_light)
+                        or layout_light is None
+                        or not is_animatable_image_path(layout_light)
                     ):
                         errors.append(
-                            "candidate_window.border_image.vertical.light_source 无效"
-                            "（需为 .png、.apng、.gif 或 .webp）"
+                            f"{where}.light_source 无效（需为 .png、.apng、.gif 或 .webp）"
                         )
                         return errors, warnings
-                state, _ = read_slice_array(vertical, "slice_dip")
+                    if layout_light != border_image_light:
+                        border_image_layout_files.append(
+                            (
+                                layout_light,
+                                f"找不到 {where}.light_source 文件",
+                                f"{'横排' if layout == 'horizontal' else '竖排'}九宫格面板图（浅色）",
+                            )
+                        )
+                elif not source_given or layout_source == border_image_image:
+                    # 没换图（或换成了同一张）时沿用共用那张浅色图，不必重复检查。
+                    layout_light = border_image_light
+                state, _ = read_slice_array(override, "slice_dip")
                 if state not in ("absent", "ok"):
-                    errors.append(
-                        "candidate_window.border_image.vertical.slice_dip 必须是 "
-                        "1、2 或 4 个 0–500 的数值"
-                    )
+                    errors.append(f"{where}.slice_dip 必须是 1、2 或 4 个 0–500 的数值")
                     return errors, warnings
                 for key in ("stretch_dip", "width_dip"):
-                    state, _ = read_slice_array(vertical, key)
+                    state, _ = read_slice_array(override, key)
                     if state == "absent":
                         continue
                     if state in ("not-list", "shape", "value"):
-                        errors.append(
-                            f"candidate_window.border_image.vertical.{key} 必须是 "
-                            "1、2 或 4 个 0–500 的数值"
-                        )
+                        errors.append(f"{where}.{key} 必须是 1、2 或 4 个 0–500 的数值")
                         return errors, warnings
-                if "fill" in vertical and not isinstance(vertical["fill"], bool):
-                    errors.append(
-                        "candidate_window.border_image.vertical.fill 必须是 true 或 false"
-                    )
+                if "fill" in override and not isinstance(override["fill"], bool):
+                    errors.append(f"{where}.fill 必须是 true 或 false")
                     return errors, warnings
-                if not read_border_image_repeat(vertical):
+                if not read_border_image_repeat(override):
                     errors.append(
-                        "candidate_window.border_image.vertical.repeat 必须是 stretch 或 "
-                        "repeat，1 个或 2 个值"
+                        f"{where}.repeat 必须是 stretch、repeat、round 或 space，"
+                        "1 个或 2 个值"
                     )
                     return errors, warnings
 
@@ -1236,22 +1280,34 @@ def validate_package(package_dir: Path) -> tuple[list[str], list[str]]:
                 ):
                     errors.append("candidate_window.content_insets_dip 数值超出范围")
                     return errors, warnings
-            if "vertical" in content_insets:
-                vertical_insets = content_insets["vertical"]
-                if not isinstance(vertical_insets, dict):
-                    errors.append(
-                        "candidate_window.content_insets_dip.vertical 必须是表"
-                    )
+            if "clamp_to_border" in content_insets and not isinstance(
+                content_insets["clamp_to_border"], bool
+            ):
+                errors.append(
+                    "candidate_window.content_insets_dip.clamp_to_border 必须是 true 或 false"
+                )
+                return errors, warnings
+            # 横排 / 竖排覆盖：只写要改的边，其余沿用上面那份；两张子表互不继承。
+            for layout in LAYOUTS:
+                if layout not in content_insets:
+                    continue
+                side_override = content_insets[layout]
+                where = f"candidate_window.content_insets_dip.{layout}"
+                if not isinstance(side_override, dict):
+                    errors.append(f"{where} 必须是表")
                     return errors, warnings
                 for key, maximum in CONTENT_INSET_BOUNDS.items():
                     if (
-                        key in vertical_insets
-                        and bounded_value(vertical_insets[key], maximum) is None
+                        key in side_override
+                        and bounded_value(side_override[key], maximum) is None
                     ):
-                        errors.append(
-                            "candidate_window.content_insets_dip.vertical 数值超出范围"
-                        )
+                        errors.append(f"{where} 数值超出范围")
                         return errors, warnings
+                if "clamp_to_border" in side_override and not isinstance(
+                    side_override["clamp_to_border"], bool
+                ):
+                    errors.append(f"{where}.clamp_to_border 必须是 true 或 false")
+                    return errors, warnings
             if not any(key in content_insets for key in CONTENT_INSET_BOUNDS):
                 # 空表与「整段不写」不是一回事：解析器会把四边都当成 0，
                 # 于是「边宽 + 5 DIP」的默认留白也一并消失。
@@ -1279,6 +1335,22 @@ def validate_package(package_dir: Path) -> tuple[list[str], list[str]]:
                 ):
                     errors.append("candidate_window.outer_insets_dip 数值超出范围")
                     return errors, warnings
+            # 横排 / 竖排覆盖：只写要改的边，写 0 可以取消共用那侧的预留；两张子表互不继承。
+            for layout in LAYOUTS:
+                if layout not in outer_insets:
+                    continue
+                outer_override = outer_insets[layout]
+                where = f"candidate_window.outer_insets_dip.{layout}"
+                if not isinstance(outer_override, dict):
+                    errors.append(f"{where} 必须是表")
+                    return errors, warnings
+                for key, maximum in OUTER_INSET_BOUNDS.items():
+                    if (
+                        key in outer_override
+                        and bounded_value(outer_override[key], maximum) is None
+                    ):
+                        errors.append(f"{where} 数值超出范围")
+                        return errors, warnings
 
         if "decorations" in window:
             decorations = window["decorations"]
@@ -1335,6 +1407,15 @@ def validate_package(package_dir: Path) -> tuple[list[str], list[str]]:
                     ):
                         errors.append(
                             "candidate_window.decorations.z_index 必须是 -1000–1000 的整数"
+                        )
+                        return errors, warnings
+                # layouts 可选：只在横排或竖排显示，不写则两种排布都画。
+                if "layouts" in decoration:
+                    layouts_ok, _ = read_enum_array(decoration, "layouts", LAYOUTS)
+                    if not layouts_ok:
+                        errors.append(
+                            "candidate_window.decorations.layouts 必须是 "
+                            "horizontal / vertical 的数组"
                         )
                         return errors, warnings
 
@@ -1403,22 +1484,17 @@ def validate_package(package_dir: Path) -> tuple[list[str], list[str]]:
             return errors, warnings
 
     # 图片存在性：Server 在 Load 的最后统一检查。
-    # 竖排没写 source / light_source 时分别继承横排 / 为空，不必重复检查横排那张。
+    # 横排 / 竖排没写 source / light_source 时分别继承共用那份 / 为空，不必重复检查。
     for relative, message in (
         (decoration_image, "找不到 candidate_window.decoration.image 文件"),
         (background_image, "找不到 candidate_window.background.image 文件"),
         (border_image_image, "找不到 candidate_window.border_image.source 文件"),
         (border_image_light, "找不到 candidate_window.border_image.light_source 文件"),
-        (
-            border_image_vertical_image if border_image_vertical_source_given else None,
-            "找不到 candidate_window.border_image.vertical.source 文件",
-        ),
-        (
-            border_image_vertical_light,
-            "找不到 candidate_window.border_image.vertical.light_source 文件",
-        ),
     ):
         if relative and not (package_dir / relative).is_file():
+            errors.append(message)
+    for relative, message, _ in border_image_layout_files:
+        if not (package_dir / relative).is_file():
             errors.append(message)
     for relative in decoration_images:
         if not (package_dir / relative).is_file():
@@ -1649,17 +1725,8 @@ def validate_package(package_dir: Path) -> tuple[list[str], list[str]]:
         check_image_file(
             package_dir, border_image_light, "九宫格面板图（浅色）", warnings
         )
-    if border_image_vertical_source_given and border_image_vertical_image:
-        check_image_file(
-            package_dir, border_image_vertical_image, "竖排九宫格面板图", warnings
-        )
-    if border_image_vertical_light:
-        check_image_file(
-            package_dir,
-            border_image_vertical_light,
-            "竖排九宫格面板图（浅色）",
-            warnings,
-        )
+    for relative, _, label in border_image_layout_files:
+        check_image_file(package_dir, relative, label, warnings)
     for relative in decoration_images:
         check_image_file(package_dir, relative, "挂件图", warnings)
     for relative, _ in toolbar_files:
