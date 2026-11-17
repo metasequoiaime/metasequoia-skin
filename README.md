@@ -31,19 +31,19 @@ assets/            # 可选，背景图 / 装饰图放这里
 
 ```powershell
 # Windows PowerShell —— 装到 opencode 全局目录
-git clone --depth 1 https://github.com/jsfaint/metasequoia-skin.git "$env:TEMP\metasequoia-skin"
+git clone --depth 1 https://github.com/metasequoiaime/metasequoia-skin.git "$env:TEMP\metasequoia-skin"
 Copy-Item -Recurse "$env:TEMP\metasequoia-skin\skills\metasequoia-skin" "$env:USERPROFILE\.config\opencode\skills\metasequoia-skin"
 ```
 
 ```bash
 # macOS / Linux —— 装到 Claude Code 全局目录
-git clone --depth 1 https://github.com/jsfaint/metasequoia-skin.git ~/.claude/skills/metasequoia-skin
+git clone --depth 1 https://github.com/metasequoiaime/metasequoia-skin.git ~/.claude/skills/metasequoia-skin
 ```
 
 想省掉仓库、只留技能目录，用 sparse-checkout：
 
 ```bash
-git clone --depth 1 --filter=blob:none --sparse https://github.com/jsfaint/metasequoia-skin.git ~/.claude/skills/metasequoia-skin
+git clone --depth 1 --filter=blob:none --sparse https://github.com/metasequoiaime/metasequoia-skin.git ~/.claude/skills/metasequoia-skin
 git -C ~/.claude/skills/metasequoia-skin sparse-checkout set skills/metasequoia-skin
 ```
 </details>
